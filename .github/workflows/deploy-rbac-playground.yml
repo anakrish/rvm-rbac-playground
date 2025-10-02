@@ -60,6 +60,20 @@ jobs:
       - name: Prepare deployment artifacts
         run: |
           mkdir -p deploy
+          
+          # Debug: List available files
+          echo "=== Available files in rbac_rvm_playground ==="
+          ls -la playgrounds/rbac_rvm_playground/
+          
+          # Debug: Check if pkg directory exists and its contents
+          if [ -d "playgrounds/rbac_rvm_playground/pkg" ]; then
+            echo "=== Contents of pkg directory ==="
+            ls -la playgrounds/rbac_rvm_playground/pkg/
+          else
+            echo "WARNING: pkg directory not found!"
+          fi
+          
+          # Copy files
           cp -r playgrounds/rbac_rvm_playground/index.html deploy/
           cp -r playgrounds/rbac_rvm_playground/app.js deploy/
           cp -r playgrounds/rbac_rvm_playground/styles.css deploy/
@@ -68,6 +82,24 @@ jobs:
           
           # Add .nojekyll file to bypass Jekyll processing
           touch deploy/.nojekyll
+          
+          # Add _headers file for proper WASM MIME type (Netlify/GitHub Pages compatible)
+          cat > deploy/_headers << 'EOF'
+          /*
+            X-Frame-Options: DENY
+            X-Content-Type-Options: nosniff
+          
+          /*.wasm
+            Content-Type: application/wasm
+          EOF
+          
+          # Debug: List deployed files
+          echo "=== Deployed files ==="
+          find deploy -type f | head -20
+          
+          # Debug: Check WASM files specifically
+          echo "=== WASM files ==="
+          find deploy -name "*.wasm" -ls
           
           # Create a simple 404 page
           cat > deploy/404.html << 'EOF'
@@ -92,6 +124,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        # Note: This will fail until GitHub Pages is enabled in repository settings
+        # Go to Settings > Pages > Source: GitHub Actions
       
       - name: Summary
         run: |
