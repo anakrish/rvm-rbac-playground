@@ -1,0 +1,104 @@
+name: Deploy RBAC Playground to GitHub Pages
+
+on:
+  # Run weekly on Mondays at 2 AM UTC
+  schedule:
+    - cron: '0 2 * * 1'
+  
+  # Allow manual trigger from Actions tab
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    
+    steps:
+      - name: Checkout RBAC branch
+        uses: actions/checkout@v4
+        with:
+          repository: anakrish/regorus
+          ref: rbac
+          fetch-depth: 0
+      
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+      
+      - name: Install wasm-pack
+        run: |
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: Build RBAC Playground
+        run: |
+          cd playgrounds/rbac_rvm_playground
+          chmod +x build.sh
+          ./build.sh
+        env:
+          CARGO_TERM_COLOR: always
+      
+      - name: Prepare deployment artifacts
+        run: |
+          mkdir -p deploy
+          cp -r playgrounds/rbac_rvm_playground/index.html deploy/
+          cp -r playgrounds/rbac_rvm_playground/app.js deploy/
+          cp -r playgrounds/rbac_rvm_playground/styles.css deploy/
+          cp -r playgrounds/rbac_rvm_playground/pkg deploy/
+          cp -r playgrounds/rbac_rvm_playground/README.md deploy/
+          
+          # Create a simple 404 page
+          cat > deploy/404.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Page Not Found</title>
+            <meta http-equiv="refresh" content="0; url=/">
+          </head>
+          <body>
+            <p>Redirecting to <a href="/">home page</a>...</p>
+          </body>
+          </html>
+          EOF
+      
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: deploy
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+      
+      - name: Summary
+        run: |
+          echo "## 🚀 Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The RBAC Playground has been deployed to GitHub Pages." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment URL:** ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: rbac" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
