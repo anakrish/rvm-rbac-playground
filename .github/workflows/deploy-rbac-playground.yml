@@ -65,6 +65,9 @@ jobs:
           cp -r playgrounds/rbac_rvm_playground/pkg deploy/
           cp -r playgrounds/rbac_rvm_playground/README.md deploy/
           
+          # Add .nojekyll file to bypass Jekyll processing
+          touch deploy/.nojekyll
+          
           # Create a simple 404 page
           cat > deploy/404.html << 'EOF'
           <!DOCTYPE html>
