@@ -55,6 +55,7 @@ jobs:
           ./build.sh
         env:
           CARGO_TERM_COLOR: always
+          RUSTFLAGS: "--cfg getrandom_backend=\"wasm_js\""
       
       - name: Prepare deployment artifacts
         run: |
